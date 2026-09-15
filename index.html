@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>Ликс-Лайн — каталог</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<script src="https://st.max.ru/js/max-web-app.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#faf9f4;
+    --paper-dim:#f1efe6;
+    --ink:#161b22;
+    --ink-soft:#3d4451;
+    --muted:#7a8090;
+    --amber:#c9820c;
+    --amber-deep:#a3690a;
+    --line:#d9d5c7;
+    --ok:#2f7d5b;
+    --brand-red:#de2126;
+    --brand-red-deep:#a8181c;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'Manrope',system-ui,sans-serif;
+    -webkit-font-smoothing:antialiased;
+    min-height:100vh;
+  }
+  #app{max-width:480px;margin:0 auto;min-height:100vh;background:var(--paper);display:flex;flex-direction:column;position:relative;}
+
+  /* ---------- Header ---------- */
+  header{
+    background:var(--brand-red);
+    color:var(--paper);
+    padding:18px 18px 14px;
+    position:sticky; top:0; z-index:20;
+  }
+  .barcode{
+    display:flex; align-items:flex-end; gap:2px; height:16px; margin-bottom:10px; opacity:.8;
+  }
+  .barcode span{display:block; background:rgba(255,255,255,.75); width:2px;}
+  .brand-row{display:flex; align-items:center; justify-content:space-between;}
+  .brand-left{display:flex; align-items:center; gap:10px;}
+  .logo-badge{
+    width:38px; height:38px; flex:0 0 auto; background:var(--paper);
+    border-radius:10px; display:flex; align-items:center; justify-content:center;
+    box-shadow:0 1px 3px rgba(0,0,0,.2);
+  }
+  .logo-badge img{width:24px; height:auto; display:block;}
+  .brand{font-weight:800; font-size:19px; letter-spacing:.2px;}
+  .brand small{display:block; font-weight:500; font-size:11.5px; color:rgba(255,255,255,.8); margin-top:2px;}
+  .updated{font-family:var(--mono); font-size:10.5px; color:rgba(255,255,255,.7);}
+
+  /* ---------- Category tabs ---------- */
+  nav.tabs{
+    display:flex; gap:6px; overflow-x:auto; padding:12px 14px 0;
+    background:var(--paper); position:sticky; top:64px; z-index:15;
+    border-bottom:1px solid var(--line);
+    scrollbar-width:none;
+  }
+  nav.tabs::-webkit-scrollbar{display:none;}
+  nav.subtabs{
+    top:108px; padding:9px 14px; border-bottom:1px solid var(--line);
+    gap:7px;
+  }
+  .chip{
+    flex:0 0 auto; padding:6px 12px; font-size:12px; font-weight:600;
+    color:var(--ink-soft); background:var(--paper-dim); border:1px solid var(--line);
+    border-radius:99px; cursor:pointer; white-space:nowrap;
+  }
+  .chip.active{color:var(--paper); background:var(--ink); border-color:var(--ink);}
+  .tab{
+    flex:0 0 auto; padding:8px 13px 10px; font-size:13px; font-weight:600;
+    color:var(--muted); background:transparent; border:none; cursor:pointer;
+    border-bottom:2px solid transparent; white-space:nowrap;
+  }
+  .tab.active{color:var(--ink); border-bottom-color:var(--brand-red);}
+
+  /* ---------- Product list ---------- */
+  main{flex:1; padding:6px 14px 90px;}
+  .row{
+    display:flex; align-items:center; gap:12px;
+    padding:14px 2px; border-bottom:1px dashed var(--line);
+    cursor:pointer;
+  }
+  .row:active{background:var(--paper-dim);}
+  .icon{
+    width:42px; height:42px; flex:0 0 auto; border-radius:9px;
+    background:var(--paper-dim); border:1px solid var(--line);
+    display:flex; align-items:center; justify-content:center;
+    color:var(--ink-soft);
+    position:relative; overflow:hidden;
+  }
+  .icon img.thumb{
+    position:absolute; inset:0; width:100%; height:100%;
+    object-fit:cover; border-radius:8px;
+  }
+  .icon svg{width:21px; height:21px;}
+  .info{flex:1; min-width:0;}
+  .info .name{font-size:14.5px; font-weight:700; line-height:1.3;}
+  .info .sub{font-size:12px; color:var(--muted); margin-top:2px;}
+  .stock-badge{display:inline-block; font-size:10.5px; font-weight:600; margin-top:4px; color:var(--ok);}
+  .stock-badge.out{color:#b34b4b;}
+  .price{
+    font-family:var(--mono); font-weight:700; font-size:14.5px; color:var(--amber-deep);
+    white-space:nowrap; padding-left:6px;
+  }
+
+  .empty{text-align:center; padding:60px 20px; color:var(--muted); font-size:13.5px;}
+
+  /* ---------- Product detail sheet ---------- */
+  .sheet-backdrop{
+    position:fixed; inset:0; background:rgba(22,27,34,.45);
+    opacity:0; pointer-events:none; transition:opacity .18s ease; z-index:30;
+  }
+  .sheet-backdrop.show{opacity:1; pointer-events:auto;}
+  .sheet{
+    position:fixed; left:50%; bottom:0; transform:translate(-50%,100%);
+    width:100%; max-width:480px; background:var(--paper);
+    border-radius:16px 16px 0 0; padding:20px 20px 22px; z-index:31;
+    transition:transform .22s cubic-bezier(.2,.8,.2,1);
+    max-height:82vh; overflow-y:auto;
+    box-shadow:0 -8px 30px rgba(0,0,0,.18);
+  }
+  .sheet.show{transform:translate(-50%,0);}
+  .sheet-handle{width:36px; height:4px; background:var(--line); border-radius:2px; margin:0 auto 16px;}
+  .sheet h2{font-size:17px; margin:0 0 6px; font-weight:800;}
+  .sheet .sku{font-family:var(--mono); font-size:11px; color:var(--muted); margin-bottom:12px;}
+  .sheet .hero-img{
+    width:100%; max-height:220px; object-fit:contain; background:var(--paper-dim);
+    border-radius:12px; border:1px solid var(--line); margin-bottom:14px; display:block;
+  }
+  .sheet p.desc{
+    font-size:13.5px; line-height:1.55; color:var(--ink-soft); margin:0 0 4px;
+    display:-webkit-box; -webkit-line-clamp:5; -webkit-box-orient:vertical; overflow:hidden;
+  }
+  .sheet p.desc.expanded{display:block; -webkit-line-clamp:unset; overflow:visible;}
+  .read-more{
+    background:none; border:none; padding:0; margin:0 0 18px; cursor:pointer;
+    font-family:'Manrope',sans-serif; font-size:12.5px; font-weight:700; color:var(--amber-deep);
+  }
+  .site-link{
+    display:flex; align-items:center; justify-content:center; gap:6px;
+    text-decoration:none; color:var(--ink-soft);
+  }
+  .site-link svg{width:14px; height:14px;}
+  .sheet .price-row{
+    display:flex; justify-content:space-between; align-items:center;
+    padding:12px 0; border-top:1px dashed var(--line); border-bottom:1px dashed var(--line); margin-bottom:16px;
+  }
+  .sheet .price-row .big-price{font-family:var(--mono); font-size:22px; font-weight:800; color:var(--amber-deep);}
+  .btn{
+    display:block; width:100%; text-align:center; padding:13px; border-radius:10px;
+    border:none; font-weight:700; font-size:14.5px; cursor:pointer;
+  }
+  .btn-primary{background:var(--amber); color:var(--ink);}
+  .btn-primary:active{background:var(--amber-deep);}
+  .btn-ghost{background:transparent; color:var(--muted); margin-top:10px; font-weight:600;}
+
+  /* ---------- Order form ---------- */
+  .field{margin-bottom:12px;}
+  .field label{display:block; font-size:12px; font-weight:600; color:var(--ink-soft); margin-bottom:5px;}
+  .field input, .field textarea{
+    width:100%; padding:11px 12px; border:1px solid var(--line); border-radius:9px;
+    font-family:'Manrope',sans-serif; font-size:14px; background:#fff; color:var(--ink);
+  }
+  .field textarea{resize:vertical; min-height:60px;}
+  .confirm{
+    text-align:center; padding:10px 0 4px;
+  }
+  .confirm .stamp{
+    display:inline-flex; align-items:center; justify-content:center;
+    width:52px; height:52px; border-radius:50%; border:2px solid var(--ok); color:var(--ok);
+    font-size:26px; margin-bottom:14px;
+  }
+  .confirm h3{margin:0 0 6px; font-size:16px;}
+  .confirm p{margin:0; font-size:13px; color:var(--muted); line-height:1.5;}
+
+  .demo-banner{
+    font-family:var(--mono); font-size:10.5px; color:#8a6a1f; background:#fdf3dd;
+    border:1px dashed #e3c581; border-radius:8px; padding:8px 10px; margin:10px 14px 0;
+  }
+</style>
+</head>
+<body>
+
+<div id="app">
+  <header>
+    <div class="barcode" id="barcode"></div>
+    <div class="brand-row">
+      <div class="brand-left">
+        <div class="logo-badge"><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAHgAAACHCAYAAADdoJ0eAAAjYklEQVR42u1deXxcVdl+znJnMpNJMtmTFijUBSwFP1ERwQXk0w8UVBCUCuInatkKpdBiQSoFkU22CpUiFfxYBVmKytayl7UWLBVZSqW0QJJJJslMZp977znfH+feOzPJJJmZZCZJ2/n9+muTNDP33ue87/u8z3nP+xIppcT29pISEAJgDACQevsdxB57HMlX/gH93XchIlEwfx3c//Vp1BzzPXi/fmjm9wiZGvdoms79pd/djMQLL0KEQiA+H7yHHAzXx2YCAMh2B7AQAKUK2H+9gdCNf0B89RqYoRAI4yBVbhBKIU0TMpEACIHve0ej6dKLwerrc35/0i5eKQFKkd60CaFlNyD2+BqI8AAABSWprUH9vNNRf8Zp2xnAhglwBhGNov/a3yF0082Q0RiYvw5E0yAhASEzlkopICWMrgA8X/g82u6+A7ylefKCnAXuwB13IXjBhRChEJjfD2gcgPI+Mp2G2d2DlmVXb0cAW6AkX30NPQsWIrnhdfCmJhDOIU1TPZhhXsTlgtHVBc+XD8K0++4B0TS1ACaTu7avnxAEf3URQtf+DrShHtTtHnp/nEPGYtBmzQKd8sDa8ZZShG/5EzqOOhbpdzZBm9YOEAJpGCOCa6943taG+LNr0fvrSx3LnozgBk6fj/5rl4G1tymvlO/+hICUErTKPcUBFkL9TSmCSy9G94KFIISC1dZCptJFgSTTafDmZoT/sBLJV19TINvvPxkWMCHoWfgLRG67Hby9HTCMYa+PEAKZSqHqc/tNYYAtq5WGicBpZ6D/quvAW1oAzXLJJbhXYllu32W/dSxmsrDlvsuuROjGmzLgDnsTgDQM0Joa+I753hQFWCiiIRMJdJ34E0TuuBva9HYF+hisTpomaG0tEmvXIvHSywpg05w44zVNgHMM3Hk3+i6/EnzaNPW9kRYp12D29aHmuO/DvfdUjMFCAJRAJhLoPPEkxB55FKy9DVI3xiVuEsYg02lE7r5nwu+TMIbkuvXoWXSeSuFsFj3ci1LIeAJs2nTUn3UGIOUUA9hyyyIaQ+cJ/4vY42vA2toAXR9Xq2E1NYg/9TSMnh4lJghZ+fskBKK/H4G5pyhCz/mo3olQCjMcRtOlF4G3tQFCTCGAbXAjEXSeeBISTzwFrX18wXVIjdsNsyuAxNPPWt+rLNmyM9fusxdB3/oBqM8HORq4nMPo6UHNccei5qjvOs+LTi3LjaLrxJ8i8dTTYK0tkOMNbjYLNQXia9aoB15RscYAYQyhm/+I6P2rwJqbRr9PSiFiMfAZM9B4yUU5aRWdKuDKeAKdP/oJ4k89pcAdiUmO1YKEAPVUIfXWOxDRKAhjlcmLhQA4R/K1Dei96BKwxoaCSZ5IJtF06cUqk8hS4uiUsNx4HB1zfoTE08+q2FImy80hOFVVMLZ9AP3993PFhnLmu0SRx+75CxSwnI/6uYRzmMEgan90AnzfPDxnE2JyA2xbbjKJrh/9BInnnhveLVOqSEh23pp1kyW5ac4hBgaQfvPtygBsEavghRcjvfENsLra0a2XUohEAnyXXdB4wXmOTp3zXyYluPZq1nV0nTQX8SeeVJsAg8GlFIQzyEQCRk8PRDQKYegQ6TREf2iM0VOCMIbEP9ZXJt9lDNG/PYyBlbeANzeptK8AriCiUfgXnAnW1OgskuwXn5TgSgkpJAInn47Y3x8Bb2/LtVxCQBiDiMVgJhLQPjYTdUd8C54vHQjtYx+DTCUReeAhhJffCOJ2l2R9UigvYGzZUl5Vy8p3jUAAwfOXgHi9hS1Li1i59vwkauf8YNgdMD7ZwJVCgDCKnrMWInrf/eDt7TngEsYgDQNGXz+0mbujYe7PUfv9Y0Dr/Tlv1XjeuTC2bkPkz/eCtzSXQMqkSj26eyBicdBq7/gXBNj3C4LgkqUwPvoIvKmpoGsllMJMJOE75mhQr1e58zwATy4XbZogjKF36SUI3/on8LYsyyVEEYpQCNIw4J8/D7s++Tj8J/9MgWuL71KqByQEak88HsRTVZo2LSWIpkEEumEEAuWJw0KAcI7o/fcjes99BYNru3XiqYL3G18fceHRyQQuOEf/DTei75rrlOVa+5yEM8A0oXd1oerAL2L6ww+haekSUL9f/Z6UinFS6iwEUIqqz38Orj0/6VRuFB0qOIcZiUB0d48/wJZL1bduRc8FS8HqaoeKGcNds8VPeFMjeFPjiPc2OQC26qdijz6GvosuAW9qchgkcblghEKQAJouXorpq+6De999MsAylv8GhQDRNLg/ux9EIql2iopl0oxBRCIwgr05CtN4EsngkotgdveAVFXlSpGUQqbT+T+TEOveuSpOGIFt00kBLqXQN/8HgdPng1S5FTtmDBACRkcHqj6/P6Y/dL8S0AHAFMMDO0ju8xz0xdJ3mAgBhIRpW/B4xV+LNYdvvwOxh/6qWHO2a7aEHb7brgrAwdcvpVOFor/3fuZZ5LnPiQXYTofSOgKnngEZjYFWVwOEwAj2QkqJxssuwfSH7oP70/uqB0MIwGgB2CgwXDNngvr9kIZeWhzmHGZnl3rPcfRW+rYP0Hvhr8H8/twtQEvYYdPbUX/GPMhobGhOb8dcxtB9xnxEHlgFmdbzVqLQCbdeQhC6+Y9IvvoaWL0fZn8IZm8vqg/7BnZ59G+on3daZielGPHCAlObMQOstVlVeJQEMIPR1TU+Fpz18HsWngs5MADicg0BRcYTaLn+Wsh0CiIWzR9ehAB1u2F0dKJ77qn44KuHIvbIY0MsmU6o9VIKMTCA0LLrIWNRiGgUrn1no/3O/0P7XbfB9am9MrG22Bhq3Sit94M3NSs2XiRA0lLEzN6+cQFYWuEo9MdbEX9sDVhDQ671cg4z0I36+fPgOeAA6Fu2jLyopQSpqgJrbET67XfQe/ElkMlUjiVPbB5MCIjLhfqzzoRIxOE56EB4DvhCxrrHKjlaN6nN2BXJdetAitW2pASIcpljBtgSNNKbNqHv15eCNdTngEs4h9nbB8+hh6Dhl4stbsIAQkf3gpoGEECbuYcqn80SPfhEggsApKoK/tNOzktCxuulzZoFGPeWWKdFIGNxlXeWek22Oqfr6D77XMhYHLS+DtIwc+IubWlBy7JrlNsGlAfTdfUsBjNlQlQBPyEwugLg06ej4fzFDjmdXGmSaarVPB5Wmw/gPfaAZLS0NIdSyHgcSKVKz4Ut/hD6w0ok1z4PVu/PgGvVX4tEAi3XXgltxm5OKaz30EOgzdxdpVEuF4imOX9gGDBDIZg9PfB87WBMW3Uf3LP3HhLOJodUyRhIGb0En9aekfNK4QnxOEQyBeb1lgxu6o1/o++yK4fEXcI5jI5O+BcuQPVh/6PUPItUsvp6tN26Et1nLkDy9Y0qPQQASsCnTYPnwC+i9vjj4DviWzkp5+TVosu1fur9IB4PkE4r71CEFRJrj1amU6VpzVIC6TSCv/glkEoDXq9T9ko4h9nXB89Xv4zGcxfm6skWUXJ/5r+wy+OPIP7cWpWPUwpW74frU59SMTcrBEz+zYYyAswaGmB88IGyjmLcLKWQhgERi+fmoIVq65yj/9rrkVi7VmnrtqBBKUQyCeqvQ8vvrgHxVA3d7rMyAeL1oPqwb+T3Djaww2QZdLtG1rICUlcH2tRYUqpkH3+R0WjxrplzpP65AX3XXgfW1JSbEhFARKNouuIyaDNnqp/lA8m6B2maDleRhplxx6MoenR7t15pmiCEgNXXQ+qGo3AVFcd1HSIaKzo9k8kkus8+V7nkrNBANA1mdw/q5v4cNUd/19lFGzGdZExxFcbU5kuBusB2D7ATi1pbLK1RFgcUIZCmCRGLFs6iLevqu+papNa/qo532psnjMEMheH+7H5o+tUvy35UdbsH2LZY1tam/GKxWQ6lyoIjURS0PKwcPvHSywgtu0HJpFl72iKtg7jdaL3xehCvZ3wk0JEW9o5iway5GUXaryN0CF2HGBgY3YItixeRCHrOXpR1KFs66aDo7UXL8t/Bteee4y7o7NAumrU0A7yU+mbFZAspgrPdbe/FlyL91tugPp8j3hBNgxkIoPbEE1B7/JxhS2x2Alyi2MGaG/Pu3BQQiJUkGI8V5Jpjq59AeOUtYE1NmXyXMZjhAbhmzULTxRdm0qEKHE/dcUhWY2NBB7jy4AsQCjMUzonp+SzXCAQQXHSeKtAblGYRRtG64gZVZmTH9kpkijuKBROPJyNyFGs5jEJEBoYnRHbR+pKl0LduVUULtmtmDGZfHxouWAz3p/cdPt/dCfAYb9TtBq2rG/UAdT7iRAi12hTlAdg+pH3XnxG9935VomuxZqJpMLp74Dv6u/CfeorKdyvcvWeHAZh4vZny2iIsWFruVEYiQwG2y2/e34bgkqWgtbWZBWQV7Gkzd0fzFZdmJMUKt4XYcQB2ucDq6pQWXMxDllK56Fg8l6DZe7ypFLoXnAMRDoNWuTMhQAhIw0DzsmvAWlomrIseL85byYL2VIvZdy1lj7bQ3+GcK1JkH4b2KwsmhBSVDxOqAJaGCaJxRxsmnKN/2fVIrHkCfPr0jKDBGcyuABrO/wW8X/5SRfLdcQGYEFK8ljsZXtaCYPX+4o+jWa5VxmKQug6icXXchHMkXnwZ/VdenXPqUR3n7IX364eiftE5Fct3SwZYSglCCILBIObNm4dEIgHO+RDQs4Ef/DXNusF8i2S4RWN/37bY4b4e7rVo0SLss88+EEKAMgbqr1PCRbFeg1KY0ShkOg14PepcUF8/us9coEgTZQ6QIpkEbW5G81VXqJ/lOfE3KS1Y13WsWrUKqVRqyhjuSSedlLMgWJ2/+Gct1TFSGY9DplKOu+/5xfnQN29W8dUWNAiBGYmg/abl0Hbf3SrQn1iaU5SLbmhoQE9PT1FxsNIunRCi2vhRCpdVvOb8rKYGssj46zBn3YDZ1wve2oLQDTcies+9OScfCefQAwHUn3k6qg8/bELjbkkAU0oRj8dhGAY0TYOw+iFOhl6mlNIhrl/XdRh29YT1fVrtBSGl9aGUug7CNSSefwG9F18C1tiYqc7gHGZ/PzwHHoDGJb+cVN1qC74Kr9eLGTNmOA/PBthhqhMiUhFQSiGEgGmaMAwjB1jvoCI56vcXXZNlJ8PE7UJs9Rp0n3m2UsTs9yEEMp0Cqa5G82+vcEpeJ0un2qLaCXd1deGtt97CG2+8gUceeQRr165FLBZzrEhMUPPOmTNnYr/99sOXvvQlB9RPfOIT+MpXvqIInt1qeP2r6Pj20eokXwluWiSTqqLC5cop8TW7u9H6hxtR84NjVTzmk2cXdkz9ojds2IAVK1Zg5cqVME2zYiDb7phzjssvvxxz585FdXX1yKkOIUj/Zws+PPjQoQ1bionFWWmX3QGg9oQ5aLlh2aSJuyUDLKV0ALTjHgA888wzOOmkk7BlyxaH5JQ75gohcN1112H+/PkOF8jmBIQQMPthWwCbfX3Y+pn9VfoyRhdqnx3mH/8Ydnn4IdCamsnXRHysFiyEgBACnHO8+eabOOiggxAOh0tWqIoBd/bs2Vi/fr3DAehIpMautBiI4P1PfxaklMNsgy1ZCIhkEtP+9iA8n/vspEiJxkSyhnvYnHPouo5Zs2bhxz/+sZOilNN6AWD27Nlwu91FfR7ReOY87hgszd4CbFy6BJ7PfdZqgzQ5Zf1xuSrbLX/84x8vq/Vmv3dra2vxn8M5SG1N5iB5KffKOczeXni/9U345/5s9JLX7QVgQgj8VrVCJXLjhoaGwtMze9OfcbCamlE7t44kWYpYDGyXXdB6/bWZyS2T+DWuV8cm8UpWd0tAfNUqXpZiwVJCpFJovvoKsMbGMXmCnQCP92dZXoX6agBhFn2akXAGMxhE/Tlnofq/D52UKVHZAaaVrDWyPqtgN+0AbDXXLsbyKIUZicK9/+fRsOic0lpK7LTg4khWqZ9FfdWlkch0GtpuuymRRH13xwW4EiSrJBcthKp4RPHNWAghkNHsuiy54wFcSRdNSmlNaJ31LakNAyGFnW7Y6aInYDFZGwDJ1/6JgdvvVH0hiy2fpRQilSr+93ZacBk/S0qnbjn+zLPoPPY4yFhMtR2SxR0jJZSqRiyGsdOCJ0WalDUkOnLPX9D1wxMhU2kQr7e03pWUQiRTU85Nj5uSNfihl7sIYEQLttMgxtB3xVUInHI6iMutGrGU4mLt+J1Mqp6XU+jFK/bQKwWwM0Arip5zF2Pgzj+reQ+2ux7DIpaJRNlmNU0JgBljFdkPHhZg3QA0DmPbB+iaexqSL70Era11fGYsMTX8A/oOHIMppRWz4pwYbMdbjSP+/Iv48PAjkFr/am7boqxY6jTULtJFi0QCUk9nvreTRVfAgu14SylCK25G1w/mQITCqtnnIHdKOIdMJiESiYKGTg3Og6Hrk2No9ESy6EpVWNrFdETTINM6uhcsQvAX54NoLjWaJttyCQE4h9HbC1LtQ+tNv4drz0+qLrJFLUoCkUrvBLgSL2KRqfS7m/HRt49C+I+3grW2DOnMas8dNAPd8B5yMHZd/Qh8R35LNfSUKHzTgQASEmIgvOOSrErWR2tNTTBeWYcPT/gJSCgEnmfULNE01R2HUjQuvQD1C+Y7bp3U+FCcnkxUv5xwZMdOk8oNsrQaYCfvvBvhV9ZDJBJw1ftz4y0lAGUwuruh7flJtFx9JTwHHZijbGW3WSiGbIlwaCfJKr9/Jkg+9QwgAVpdnRtvOYfUDZiBAGqOn4NdH39YgWtXX9jlO9bIu2KWowRg9IV2WnBF0qQaHyBpjhUSjcPsD4H4fGi5/jrUnniC+oE5dKAH8XqL8tB2F0SnIdpOJav8JMuxP0pBABhdAVR98QtovupK1f3ckSxpngVSU1RbBWmBLBKJnSSrcrFFzTWSiQTMWAz++fPQeMH56uzQKDVTxOeDLHbTniDTjGUnwOWPw+AazGAQrrZWtKxYDt+3Ds+IH6PsNtEaX3Gd3+08uD+U+fydAJeNS4MICbMrAM+hh6Bt2dXQdt01R9Ua1QN4vCV0JiUw+/t3xuAKmC9gGPCfdy60c89Rn1tkGSup9hRlwXa/LBGJQAoThLIJa400YWlSRSyYECCdRv2S8+FevEjtXBU79s5m0UU2ByecQ0SixXV/3wlwiUrW7rvlDqUo9sarqorrgCMlwBlkNJKZ3zAFxI5xreioZB8tohtjag1oz0AoimhxDhEegBiI7rTgsgM81nivaQDXCi9OsPeEk0nIZGInwJP2ZXsbzlVbwiL1aCkkzFAoi3ntQABXFqcxtmDgvPghWYQAwoTZFcBUQXjHs2AnQeSZ+ugCr5sQJaIY3YEd00VX9MLHGINLsmAAhFAYXd07AZ4KFlwswFIqscO0R77vBLj8MZiModcGNF58iS8lWTGY7GAAV7DisOR477BoZk1hkUWJHcTqSylTabUNOcnFDjqe4FKfb+oQLdtFF8WEJcA5xEAERvfUiMNjBzhrOHHikccgUqkpsZVGuFZ8bbS01KyBATWs2QnM2yvAFriEUkRvvAnBs87O6MKTXaflDMhuKlro/VIKmUrB7O3dzgHOEvp7fn0p+hZfAFpXp1z0FBDhCWOgmlY0ySKUQuo6jI86pkYkKhlcy1J75p+D/ltuRXVbO4g5hU7eMQaiufIKHRKAyPr3kAcmAf29LTmkbfsB2D6eGY2ia+6piD/8KHh7O2CYFd0AH+sJRsK4Uzo7GFw3IfBYVXZ2qQ4hAJESA1LCdGlIb9q0HQJsgWuGwgj87GTEVq/JnVtAK3fC3wa4JKDtEskq15Bvu0Cw2dDxNgGYBHQpYQoBQ5jQGcNXNBfauQZ967bKAJxFYssLcJbldv7wRCRffBFaFrigDEjEJn/8dTgCUS5aZK5XAPAIgWc1jgs/3Kr6cdj3IwRQU4O7m1qxB2OIRCIwAgHw1tbyeS77fcfw3rQocAcG0HnsHKReehmstTUDLmMwQyG49p6VGVtebnZYbKe7wQ8OQ083EACCEvTpadB0Gtw0QYUAkxLMsgaXBKCpjX8nDgtZNnDNcBipf24ombHTQj9IJpPoPGkuEi++rKZpZ0/66gnC950j0XLLzSD2zZbZdY1FULHdOq1yQ0qRq1RRho5YDEJKh2yZ1h8DEgJSnfaPx2FYblqO97ah5ZZFNIqO7/8QncedoE5UlJCh0IL8PyHoOuV0xFc/Adbeljs+NRiE9xv/jYablqthFxXqYTEmxcy2YOcIaXYclkg4jVbI0NgNYqVKBtKb3i3Pzdmj4i+6BKm1L0BKAaOrsyQrHhFgaU/5Wnw+ovc/qI5optOOWxbhMNx77422G5cDnMMlJXy1tVMnVdJ4DoaEEAiosUGjPRfqqUJq40YnNx63lz0q/rHVCN/yJ7DWVlCPV7UvLsEz0pFWEWEMkQceROj3N4G3DTp/a5qQlKJl+TKwxnpASri9XqcpOJnELtpJfqp9OcmutLwVceYtyfwUXAgQtxvp97ZARKIluc7hwyEgolEEf7UUtLoaIhqBa/YssIbGcYzBVjmpvm0behcvAaury3lzu619/TkL4N53H2cmr8vlQl1d3eRXsay1wWprHbCl9TDSACKaNiy8znBLjUP09iG9efP4SZZSAlT19tLf2axaH+sGPAcfrHhQCY3M6UjEKviri2AGe1QDMVuztVIl1z6zUX/ayTmqlqZpqKmpmQIWbN2Kv9ZqzWDljIQiapp4va8vF2DpmLgiWZZQIgYGkFz/aiacjUPcTW54HeGVt4A1NUDG42DNTfAd/j/WZ9JxsGDrlED0wb8i9te/gzU25PZnJAQiHof/lJ8r4O0+jtbL7XZXNE0ai4tmtX7nKwmAQ6IHEilNyQMyzyIiWc+BCIn0htfHnjXYoo1hoPeCC9WgD5cLYiAC7yFfBd9lesljamne3KuvD8GLfw3q8eR6Hkog43G49t4bvqOPmlKdz/OhRPx1VucNQEgJNyFYZ+gwE3H1YEZyu0KAVHuR/Ne/IRIJp9nLWKw3/MdbkXjueTC/X/EdzlBz/JwxhYC8APdecjmMLe+D+ny5J+iZSvBr53wf1G7qOWhV6VOo1R9rqIdk1BmCbRKCp1IJCFMMW4wjswH2VEF/7z3om8YQhy2Pmf7Pe+i78hrQer/qChSNwTV7bzUiXsqS50PQHHpOKeJrX0DkjrvAmppyG5sQAplMgbW1wnv4YTluKVsPtid/lrud4bjEYF81qNcLYQp4AGwhwCuppHruw7y/zHLphDHIaAyxJ54sDWBbZxACveddABkOgVohTqZS8J/8M+UhxxDfaY5aZRjou/K3kCLP3HlKIRJxuD/zGbhmzpzwGbljAtiZJ6wANk0DNZTh3mQCfZEI6LALVA75kmhqprDzPIoB2bLe0M23IPbYatCGBkghIGIxuGbthepvHznmMEizY0DskUeRfOEl8Pr6IY2v7cEU3kMPsZawzPuwNSvFmBIs2uOFrPbCIwT+Q4A/9XZbvT+G98/ZfXmkaYLW+JBa/yrS7262Tj4UBrC0BI3Uxo3WwOkGRa6s4Vv+k38OamcvY9pssLq9yVQKoZtWKvku3wUZJqjPB8+BB4zIGgePVZ/UXKvKDdTUwCeBy5JR9CYTaiEPz8uGWDGxivCiDz40gjiSX0Qyg0EETj0DRJjOyFsRU7HX991vj4uXpLDcceKll5F86WXQ2jzzDCiFTCXBd9sV2u67DwHYdme6riMYDFYkBo9Hd3nhdqOtsQl/T8Vxf28QVA5/3XIk2bLGh8hf7ofZ12fFTDlqSgTTRGDeWUi/+TZobZ0SiyyNoX7+GaC1teOyDUntN4jcdY8635tv9VqtdLUZu4GOMNyxv78f//73v8sKsP2+2jCeptAYbOo6GCHYusdu+FWoD9KqBpUjZVZSDg2xQoB6vUhveheRe/5iyZYCIymEoBSBBQsRf+xx8GaLzNra/v77w3fUd8aN41BQCn3bNsSfeRZ0uMGNUqqS4D12z0sW7aHRGzduRDweL7sFj7UvtWmaYJoGXddx6qvr8L5pgBICUcg1k/zxlDXUo//65dA//EilNNkcRkr1tTXWp3veWRi47Q7wlhanS599sK1h8cLiG6WOFoMTzz0Ps7NL9ZfKc5MSAKEErj32yBt+bTBffPFFCCHKNpzDJlZj6ain6zoYY+jt7cURRxyBZ556GpQQmAW2+5fDuF3qdkN096DnzAUKNM5zWTvn0LdsQccxx2HgzrvAm5sz4GocRrAX1d88HNWHfs1i1+OToVAQIP7kUyBu1+h6ah6rsQc067qOhx9+uGI5cDEWLIRwANQ0DVu3bsWRRx6J1atXgzFWmOWOQqCkYYDW1yP+7HPo/MHxSL/5lgLKNJHe/B/0XXEVPvzGN5F84UWw5uZMy2NCIFNpsLo6NCxeNO4lT1yEB5D65+tqs36kN5eAiMXyujvOOR544AGsW7fOGcFebh16NAuWUjp/bI+STCaxYsUK/OY3v0EwGARjrGDLLdD3gzU0ILH2eXz4zW9D230GoBvQP/oIYmAAtKYG1O/Pcd+EMxg9PWi86EK4PrXXuOsLPPGPf8AMBod1zxkxXsLsCWbWsZTQdR0ulwsbN27EwoULK9rtfTgLllI6i86+no6ODjz00ENYuXIlXnvtNYeFm+WYYmaaoHV1gGFA3/QuAALidoE3NioPOahZudkfRtUX9of/9FPGnPPmBVjfvBkylRp5ppC1oW10dMIUAtIwwN1uuFwubNiwAUcffTS2bt1aEeu1XfRwi4kQAs450uk0XnnlFdx+++149NFH8eGHHzrAZrvsoll8IQBYsq9TOCBl/tTTMACXhuarrlAGVhaAt2xVYvtIuZ6UIFyDEegGoxRwu7Ft61b832234eqrr0Y4HK4YuDZIgy3Y3jCIRCJYvnw5HnzwQaxbty7nd2zrLj1Hg1N1UbDOPNwipRR6oBvNV18J96f3LdvAaW50dKoishEuRgoBWuUG/agDT65ahXufeAL33XUX+qy+jYSQioE7nAXb7P3pp5/Geeedl0PGxgxsQTSriJemQe/oRN1P/xf+uT+FNE213ViGFxfhcNbQ42EeqJSgXMP87g7cd9RROVYhhKjIIKxCWbQNNCEEhmGUJ86OEVyjoxO+o76Dlmt+q2TLMm7a8EKnghEKdJrq/7pdLuiG4VhtxbrbZeXBI6VJQojSu+6NQDTH1LLBmqVodnai9pij0HLziky8LePz47SAaZwSAANBjeVGUumJmR1ke4pCwRtPzyIBQJgQpcBsdaTXO7vg/9lP0HzVFZlUqMzGwfm0dgjDBB9Bh7XvUIKAcQbGOESFXZ9NorLz23yvZDI54s8He5zB/5amCebxAIYBYZoQUkKjFJwQuGprwAixjzYVZricQ1gd6RuXnIeGcxdmvEQFPB93fWovjDaRngDQKcWZsSTOPuU01J74IyXOjwMxyAauUMuTUqK9vd1x19l/H3DAAVi1ahWqqqpyrD3b6rPPNTndegBQriH+178hfsuf4G5uhhGNQpgmqjQNHkrhIgR1pkCcAqwAqwWlMIK9YE2NaPv97+A78ohMKlSpsJZ6Z5P86LAj1Q7ICBUJhHG4QiFM++sDwBe/gO32lUyhf84JiK95Atr06epAmmlCCAEBwEDmcPiw7pgxiHgcIhKB5+Cvovny38C1155lS4VGIchS9ixajNDvV0DbbTdlmYP/k8sFo6MTnu8cgbbbbgUZNINoIuLwcBsaUsrSUjZCFKO1XGrg9PmIPrAKhFFQn8+plSJOfiszOz6WJ5BSQlrA8j32QP28U1H3859mxI8Kg6uu1zSlGQ6j4zvfQ+q1DWDtbVZFjuU6CYHRFYB79ixMu/9e8LbWisWPCWJyzr3FnnwakTvuROKll2F2dikgNU3lrJRZ502VsifSaeXl9toTNccejZrj54C3tNi0fsLq14gUQoIQGIEAes4+F7HH16hFyRikaUJKCc9Xv4LW668Dn9Y+JeYUjAvIWYtY37oNqY0bkfrXG9Df2QQj0K2OcwoB4vOBt7XBvfcsuPf/HDwHHABa7c2RLCfyeRGpfJqzwqJ/fxjx1U/A6AqAtzbDc/DBqPneURO+EifkZYeifNukhqHcNNeGEmrTVMIBnXhD+H+NcqLVOC8+CgAAAABJRU5ErkJggg==" alt="Ликс-Лайн" /></div>
+        <div class="brand">Ликс-Лайн<small>Кассы · весы · маркировка · ЕГАИС</small></div>
+      </div>
+      <div class="updated" id="updatedAt">—</div>
+    </div>
+  </header>
+
+  <div class="demo-banner" id="demoBanner" style="display:none;">
+    demo-режим: показаны примерные данные, каталог с сайта ещё не подключён
+  </div>
+
+  <nav class="tabs" id="tabs"></nav>
+  <nav class="tabs subtabs" id="subtabs" style="display:none;"></nav>
+
+  <main id="list"></main>
+</div>
+
+<div class="sheet-backdrop" id="backdrop"></div>
+<div class="sheet" id="sheet"></div>
+
+<script>
+/* =========================================================================
+   НАСТРОЙКА
+   Когда бридж-сервер (bridge-server) будет развёрнут и будет виден снаружи,
+   впишите сюда его адрес — и приложение само переключится с демо-данных
+   на реальный каталог с сайта lixcompany.ru.
+   ========================================================================= */
+const API_BASE = 'https://lixline-bridge-server.onrender.com';
+
+/* -------------------------------------------------------------------------
+   Заготовка под интеграцию с MAX Bridge (подключим на следующем шаге).
+   Официальная документация: https://dev.max.ru/docs/webapps/bridge
+   Пример того, что здесь появится: сигнал приложению, что оно готово
+   к показу, и получение данных о пользователе/чате, из которого открыли
+   мини-приложение. Пока это просто заглушка, чтобы код был на месте.
+------------------------------------------------------------------------- */
+/* Интеграция с MAX Bridge (https://dev.max.ru/docs/webapps/bridge).
+   Библиотека window.WebApp появляется автоматически, когда страница
+   открыта внутри мессенджера MAX — в обычном браузере (или в Telegram)
+   её просто нет, поэтому везде ниже проверяем её наличие. */
+function initMaxBridgeIfPresent() {
+  if (!window.WebApp) return;
+  try {
+    const data = window.WebApp.initDataUnsafe;
+    if (data && data.user) {
+      state.maxUser = data.user; // { id, first_name, last_name, username, ... }
+    }
+  } catch (e) {
+    console.warn('MAX Bridge: не удалось прочитать initDataUnsafe', e);
+  }
+}
+
+/* Демо-данные — реалистичный срез каталога Ликс-Лайн, чтобы приложение
+   было видно и кликабельно уже сейчас, до подключения реального сайта. */
+const DEMO_DATA = {
+  categories: [
+    { category_id: 1, name: 'Кассовые аппараты' },
+    { category_id: 2, name: 'Весы' },
+    { category_id: 3, name: 'Сканеры и принтеры' },
+    { category_id: 4, name: 'Маркировка и Честный Знак' },
+    { category_id: 5, name: 'ЕГАИС и консультации' },
+  ],
+  products: [
+    { id: 1, name: 'АТОЛ 91Ф', sku: 'ATL-91F', description: 'Фискальный регистратор для небольших магазинов и точек услуг. Работает с ФН-1.1, автономно до 300 000 чеков.', price: 24900, in_stock: true, category_ids: [1] },
+    { id: 2, name: 'Эвотор 7.3', sku: 'EVT-73', description: 'Смарт-терминал с сенсорным экраном, встроенным эквайрингом и учётом остатков.', price: 32900, in_stock: true, category_ids: [1] },
+    { id: 3, name: 'АТОЛ Sigma 7', sku: 'ATL-SG7', description: 'POS-терминал для розницы с полноценной кассовой программой и поддержкой маркировки.', price: 54900, in_stock: false, category_ids: [1] },
+    { id: 4, name: 'Весы CAS AP-1', sku: 'CAS-AP1', description: 'Электронные торговые весы, чек-принтер в комплекте, до 15 кг.', price: 8900, in_stock: true, category_ids: [2] },
+    { id: 5, name: 'Весы M-ER со сканером', sku: 'MER-SC', description: 'Весы с интегрированным сканером штрихкода для маркированного товара.', price: 15400, in_stock: true, category_ids: [2] },
+    { id: 6, name: 'Сканер Zebra DS2208', sku: 'ZBR-2208', description: 'Проводной 2D-сканер штрихкодов, читает DataMatrix для системы маркировки.', price: 4200, in_stock: true, category_ids: [3] },
+    { id: 7, name: 'Принтер этикеток TSC TE200', sku: 'TSC-TE200', description: 'Принтер для печати этикеток и ценников, в т.ч. кодов маркировки.', price: 11900, in_stock: true, category_ids: [3] },
+    { id: 8, name: 'Подключение к Честному Знаку', sku: 'SRV-CZ', description: 'Регистрация в системе маркировки, настройка электронного документооборота под ключ.', price: 3500, in_stock: true, category_ids: [4] },
+    { id: 9, name: 'Настройка маркировки товаров', sku: 'SRV-MARK', description: 'Настройка процесса маркировки и сканирования на вашей кассе — выезд специалиста.', price: 7900, in_stock: true, category_ids: [4] },
+    { id: 10, name: 'Регистрация в ЕГАИС', sku: 'SRV-EGAIS', description: 'Оформление и подключение к ЕГАИС для розничной продажи алкоголя.', price: 5000, in_stock: true, category_ids: [5] },
+    { id: 11, name: 'Консультация по кассовой дисциплине', sku: 'SRV-CONS', description: 'Часовая консультация: разбор требований 54-ФЗ, проверка настроек кассы.', price: 2000, in_stock: true, category_ids: [5] },
+  ],
+};
+
+let state = { categories: [], products: [], activeCategory: null, activeSubcategory: null, isDemo: true, maxUser: null };
+
+function escapeAttr(str){
+  return String(str).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+function money(v){
+  return new Intl.NumberFormat('ru-RU').format(v) + ' ₽';
+}
+
+function categoryNameFor(catIds){
+  const id = catIds && catIds[0];
+  if (id == null) return '';
+  const cat = state.categories.find(c => Number(c.category_id) === Number(id));
+  return cat ? cat.name.toLowerCase() : '';
+}
+
+// категория верхнего уровня — либо явный корень (parent_id 0),
+// либо "сирота", чей родитель отключён и не попал в фид
+function getTopLevelCategories(){
+  const ids = new Set(state.categories.map(c => Number(c.category_id)));
+  return state.categories.filter(c => Number(c.parent_id) === 0 || !ids.has(Number(c.parent_id)));
+}
+function getChildren(catId){
+  return state.categories.filter(c => Number(c.parent_id) === Number(catId));
+}
+// товары раздела: свои + товары всех его подкатегорий
+function productsInBranch(catId){
+  const ids = [Number(catId), ...getChildren(catId).map(c => Number(c.category_id))];
+  return state.products.filter(p => p.category_ids.some(id => ids.includes(id)));
+}
+
+function iconFor(catIds){
+  // подбираем иконку по ключевым словам в названии категории товара —
+  // категории в разных магазинах OpenCart имеют разные ID, поэтому
+  // завязываться на конкретные числа ненадёжно
+  const name = categoryNameFor(catIds);
+  const icons = {
+    kassa: '<path d="M3 8h18v11H3z"/><path d="M3 8l2-4h14l2 4"/><path d="M9 14h6"/>',
+    vesy: '<path d="M4 20h16"/><circle cx="12" cy="10" r="6"/><path d="M9 20l3-4 3 4"/>',
+    scan: '<rect x="4" y="4" width="16" height="16" rx="2"/><path d="M8 8h8M8 12h8M8 16h4"/>',
+    marking: '<rect x="4" y="4" width="16" height="16" rx="2"/><circle cx="9" cy="9" r="1.4"/><path d="M13 9h4M9 15l6-6"/>',
+    service: '<circle cx="12" cy="12" r="9"/><path d="M8 12l3 3 5-6"/>',
+    default: '<rect x="4" y="7" width="16" height="13" rx="2"/><path d="M4 7l3-4h10l3 4"/><path d="M9 11h6"/>',
+  };
+  let key = 'default';
+  if (/касс/.test(name)) key = 'kassa';
+  else if (/вес/.test(name)) key = 'vesy';
+  else if (/скан|штрих/.test(name)) key = 'scan';
+  else if (/маркиров|знак|честн/.test(name)) key = 'marking';
+  else if (/егаис|консульт|инфо|1с/.test(name)) key = 'service';
+
+  return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">${icons[key]}</svg>`;
+}
+
+function renderBarcode(){
+  const el = document.getElementById('barcode');
+  let html = '';
+  for (let i=0;i<28;i++){
+    const w = [1,1,2,1,3,1][i % 6];
+    const h = 8 + (i % 5) * 2;
+    html += `<span style="width:${w}px;height:${h}px;"></span>`;
+  }
+  el.innerHTML = html;
+}
+
+function renderTabs(){
+  const tabs = document.getElementById('tabs');
+  const top = getTopLevelCategories();
+  const all = [{ category_id: null, name: 'Все' }, ...top];
+  tabs.innerHTML = all.map(c => `
+    <button class="tab ${state.activeCategory === c.category_id ? 'active' : ''}" data-cat="${c.category_id}">
+      ${c.name}
+    </button>
+  `).join('');
+  tabs.querySelectorAll('.tab').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const v = btn.dataset.cat;
+      state.activeCategory = v === 'null' ? null : Number(v);
+      state.activeSubcategory = null;
+      renderTabs();
+      renderList();
+    });
+  });
+
+  renderSubtabs();
+}
+
+function renderSubtabs(){
+  const subtabs = document.getElementById('subtabs');
+  const children = state.activeCategory ? getChildren(state.activeCategory) : [];
+
+  if (!children.length){
+    subtabs.style.display = 'none';
+    subtabs.innerHTML = '';
+    return;
+  }
+
+  subtabs.style.display = 'flex';
+  const chips = [{ category_id: null, name: 'Весь раздел' }, ...children];
+  subtabs.innerHTML = chips.map(c => `
+    <button class="chip ${state.activeSubcategory === c.category_id ? 'active' : ''}" data-cat="${c.category_id}">
+      ${c.name}
+    </button>
+  `).join('');
+  subtabs.querySelectorAll('.chip').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const v = btn.dataset.cat;
+      state.activeSubcategory = v === 'null' ? null : Number(v);
+      renderSubtabs();
+      renderList();
+    });
+  });
+}
+
+function renderList(){
+  const list = document.getElementById('list');
+  let items;
+  if (state.activeSubcategory){
+    items = state.products.filter(p => p.category_ids.includes(state.activeSubcategory));
+  } else if (state.activeCategory){
+    items = productsInBranch(state.activeCategory);
+  } else {
+    items = state.products;
+  }
+
+  if (!items.length){
+    list.innerHTML = `<div class="empty">В этой категории пока пусто</div>`;
+    return;
+  }
+
+  list.innerHTML = items.map(p => `
+    <div class="row" data-id="${p.id}">
+      <div class="icon">
+        ${iconFor(p.category_ids)}
+        ${p.image ? `<img class="thumb" src="${escapeAttr(p.image)}" alt="" loading="lazy" />` : ''}
+      </div>
+      <div class="info">
+        <div class="name">${p.name}</div>
+        <div class="sub">${p.sku}</div>
+        <div class="stock-badge ${p.in_stock ? '' : 'out'}">${p.in_stock ? 'В наличии' : 'Нет в наличии'}</div>
+      </div>
+      <div class="price">${money(p.price)}</div>
+    </div>
+  `).join('');
+
+  // если фото не загрузилось — просто скрываем его, под ним уже есть иконка-заглушка
+  list.querySelectorAll('.icon img.thumb').forEach(img => {
+    img.addEventListener('error', () => { img.style.display = 'none'; });
+  });
+
+  list.querySelectorAll('.row').forEach(row => {
+    row.addEventListener('click', () => openProduct(Number(row.dataset.id)));
+  });
+}
+
+function openProduct(id){
+  const p = state.products.find(x => x.id === id);
+  if (!p) return;
+  const sheet = document.getElementById('sheet');
+  const descId = 'desc-' + p.id;
+  const isLong = (p.description || '').length > 160;
+
+  sheet.innerHTML = `
+    <div class="sheet-handle"></div>
+    ${p.image ? `<img class="hero-img" src="${escapeAttr(p.image)}" alt="" onerror="this.remove()" />` : ''}
+    <h2>${p.name}</h2>
+    <div class="sku">Артикул ${p.sku}</div>
+    <p class="desc" id="${descId}">${p.description || 'Описание уточняется — напишите нам, ответим в течение дня.'}</p>
+    ${isLong ? `<button class="read-more" id="readMoreBtn">Читать далее</button>` : ''}
+    <div class="price-row">
+      <span class="big-price">${money(p.price)}</span>
+      <span class="stock-badge ${p.in_stock ? '' : 'out'}">${p.in_stock ? 'В наличии' : 'Нет в наличии'}</span>
+    </div>
+    <button class="btn btn-primary" id="orderBtn">Оформить заявку</button>
+    ${p.url ? `
+      <a class="btn btn-ghost site-link" href="${escapeAttr(p.url)}" target="_blank" rel="noopener">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6"/><path d="M10 14L20 4"/><path d="M18 13v6a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h6"/></svg>
+        Смотреть на сайте
+      </a>
+    ` : ''}
+  `;
+  if (isLong){
+    const descEl = sheet.querySelector('#' + descId);
+    sheet.querySelector('#readMoreBtn').addEventListener('click', (e) => {
+      const expanded = descEl.classList.toggle('expanded');
+      e.target.textContent = expanded ? 'Свернуть' : 'Читать далее';
+    });
+  }
+  sheet.querySelector('#orderBtn').addEventListener('click', () => openOrderForm(p));
+  showSheet();
+}
+
+function openOrderForm(p){
+  const sheet = document.getElementById('sheet');
+  const prefillName = state.maxUser ? [state.maxUser.first_name, state.maxUser.last_name].filter(Boolean).join(' ') : '';
+  sheet.innerHTML = `
+    <div class="sheet-handle"></div>
+    <h2>Заявка на «${p.name}»</h2>
+    <div class="sku">${money(p.price)}</div>
+    <div class="field">
+      <label>Ваше имя</label>
+      <input type="text" id="fName" placeholder="Как к вам обращаться" value="${escapeAttr(prefillName)}" />
+    </div>
+    <div class="field">
+      <label>Телефон</label>
+      <input type="tel" id="fPhone" placeholder="+7 ___ ___-__-__" />
+    </div>
+    <div class="field">
+      <label>Комментарий (необязательно)</label>
+      <textarea id="fComment" placeholder="Например, удобное время для звонка"></textarea>
+    </div>
+    <button class="btn btn-primary" id="submitOrder">Отправить заявку</button>
+    <button class="btn btn-ghost" id="backBtn">Назад</button>
+  `;
+  sheet.querySelector('#backBtn').addEventListener('click', () => openProduct(p.id));
+  sheet.querySelector('#submitOrder').addEventListener('click', () => submitOrder(p));
+}
+
+async function submitOrder(p){
+  const name = document.getElementById('fName').value.trim();
+  const phone = document.getElementById('fPhone').value.trim();
+  const comment = document.getElementById('fComment').value.trim();
+
+  if (!name || !phone){
+    alert('Заполните имя и телефон');
+    return;
+  }
+
+  const payload = {
+    name, phone, comment,
+    items: [{ id: p.id, name: p.name, price: p.price }],
+    // если приложение открыто внутри MAX — боту есть кому ответить прямо в чат
+    max_user_id: state.maxUser ? state.maxUser.id : null,
+  };
+
+  if (!API_BASE){
+    showConfirm(true, false);
+    return;
+  }
+
+  try {
+    const res = await fetch(`${API_BASE}/api/order`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    showConfirm(res.ok, !!state.maxUser);
+  } catch (e) {
+    showConfirm(false, false);
+  }
+}
+
+function showConfirm(ok, isMaxChat){
+  const sheet = document.getElementById('sheet');
+  const successText = isMaxChat
+    ? 'Мы напишем подтверждение прямо в этот чат с ботом — там же можно будет уточнить детали.'
+    : 'Мы свяжемся с вами в ближайшее время.';
+  sheet.innerHTML = ok ? `
+    <div class="confirm">
+      <div class="stamp">✓</div>
+      <h3>Заявка принята</h3>
+      <p>${API_BASE ? successText : 'Демо-режим: заявка не отправлена по-настоящему — бридж-сервер ещё не подключён. Когда подключим, здесь будет реальная отправка.'}</p>
+      <button class="btn btn-ghost" id="closeBtn" style="margin-top:16px;">Закрыть</button>
+    </div>
+  ` : `
+    <div class="confirm">
+      <div class="stamp" style="border-color:#b34b4b;color:#b34b4b;">!</div>
+      <h3>Не получилось отправить</h3>
+      <p>Проверьте связь и попробуйте ещё раз, либо позвоните нам напрямую.</p>
+      <button class="btn btn-ghost" id="closeBtn" style="margin-top:16px;">Закрыть</button>
+    </div>
+  `;
+  sheet.querySelector('#closeBtn').addEventListener('click', hideSheet);
+}
+
+function showSheet(){
+  document.getElementById('backdrop').classList.add('show');
+  document.getElementById('sheet').classList.add('show');
+}
+function hideSheet(){
+  document.getElementById('backdrop').classList.remove('show');
+  document.getElementById('sheet').classList.remove('show');
+}
+document.getElementById('backdrop').addEventListener('click', hideSheet);
+
+async function loadCatalog(){
+  if (API_BASE){
+    try {
+      const [catRes, prodRes] = await Promise.all([
+        fetch(`${API_BASE}/api/categories`),
+        fetch(`${API_BASE}/api/products`),
+      ]);
+      if (!catRes.ok || !prodRes.ok) throw new Error('bad response');
+      state.categories = await catRes.json();
+      state.products = await prodRes.json();
+      state.isDemo = false;
+      document.getElementById('updatedAt').textContent = new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+      document.getElementById('demoBanner').style.display = 'none';
+      return;
+    } catch (e) {
+      console.warn('Не удалось загрузить реальный каталог, показываю демо-данные', e);
+    }
+  }
+  state.categories = DEMO_DATA.categories;
+  state.products = DEMO_DATA.products;
+  state.isDemo = true;
+  document.getElementById('updatedAt').textContent = 'демо';
+  document.getElementById('demoBanner').style.display = 'block';
+}
+
+(async function init(){
+  initMaxBridgeIfPresent();
+  renderBarcode();
+  await loadCatalog();
+  renderTabs();
+  renderList();
+})();
+</script>
+</body>
+</html>
