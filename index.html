@@ -7,6 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <script src="https://st.max.ru/js/max-web-app.js"></script>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
 <style>
   :root{
@@ -225,25 +226,36 @@
 const API_BASE = 'https://lixline-bridge-server.onrender.com';
 
 /* -------------------------------------------------------------------------
-   Заготовка под интеграцию с MAX Bridge (подключим на следующем шаге).
-   Официальная документация: https://dev.max.ru/docs/webapps/bridge
-   Пример того, что здесь появится: сигнал приложению, что оно готово
-   к показу, и получение данных о пользователе/чате, из которого открыли
-   мини-приложение. Пока это просто заглушка, чтобы код был на месте.
+   Определяем, в каком мессенджере открыто приложение — MAX или Telegram —
+   и достаём данные о пользователе оттуда. В обычном браузере (демо-режим)
+   ни одна из библиотек не появляется, ничего страшного.
 ------------------------------------------------------------------------- */
-/* Интеграция с MAX Bridge (https://dev.max.ru/docs/webapps/bridge).
-   Библиотека window.WebApp появляется автоматически, когда страница
-   открыта внутри мессенджера MAX — в обычном браузере (или в Telegram)
-   её просто нет, поэтому везде ниже проверяем её наличие. */
-function initMaxBridgeIfPresent() {
-  if (!window.WebApp) return;
-  try {
-    const data = window.WebApp.initDataUnsafe;
-    if (data && data.user) {
-      state.maxUser = data.user; // { id, first_name, last_name, username, ... }
+function initPlatformBridge() {
+  // MAX: https://dev.max.ru/docs/webapps/bridge
+  if (window.WebApp) {
+    try {
+      const data = window.WebApp.initDataUnsafe;
+      if (data && data.user) {
+        state.platform = 'max';
+        state.platformUser = data.user; // { id, first_name, last_name, username, ... }
+      }
+    } catch (e) {
+      console.warn('MAX Bridge: не удалось прочитать initDataUnsafe', e);
     }
-  } catch (e) {
-    console.warn('MAX Bridge: не удалось прочитать initDataUnsafe', e);
+  }
+
+  // Telegram: https://core.telegram.org/bots/webapps
+  if (!state.platform && window.Telegram && window.Telegram.WebApp) {
+    try {
+      window.Telegram.WebApp.ready();
+      const data = window.Telegram.WebApp.initDataUnsafe;
+      if (data && data.user) {
+        state.platform = 'telegram';
+        state.platformUser = data.user; // { id, first_name, last_name, username, ... }
+      }
+    } catch (e) {
+      console.warn('Telegram WebApp: не удалось прочитать initDataUnsafe', e);
+    }
   }
 }
 
@@ -272,7 +284,7 @@ const DEMO_DATA = {
   ],
 };
 
-let state = { categories: [], products: [], activeCategory: null, activeSubcategory: null, isDemo: true, maxUser: null };
+let state = { categories: [], products: [], activeCategory: null, activeSubcategory: null, isDemo: true, platform: null, platformUser: null };
 
 function escapeAttr(str){
   return String(str).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -467,7 +479,7 @@ function openProduct(id){
 
 function openOrderForm(p){
   const sheet = document.getElementById('sheet');
-  const prefillName = state.maxUser ? [state.maxUser.first_name, state.maxUser.last_name].filter(Boolean).join(' ') : '';
+  const prefillName = state.platformUser ? [state.platformUser.first_name, state.platformUser.last_name].filter(Boolean).join(' ') : '';
   sheet.innerHTML = `
     <div class="sheet-handle"></div>
     <h2>Заявка на «${p.name}»</h2>
@@ -505,7 +517,8 @@ async function submitOrder(p){
     name, phone, comment,
     items: [{ id: p.id, name: p.name, price: p.price }],
     // если приложение открыто внутри MAX — боту есть кому ответить прямо в чат
-    max_user_id: state.maxUser ? state.maxUser.id : null,
+    platform: state.platform,
+    platform_user_id: state.platformUser ? state.platformUser.id : null,
   };
 
   if (!API_BASE){
@@ -519,7 +532,7 @@ async function submitOrder(p){
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     });
-    showConfirm(res.ok, !!state.maxUser);
+    showConfirm(res.ok, !!state.platformUser);
   } catch (e) {
     showConfirm(false, false);
   }
@@ -584,7 +597,7 @@ async function loadCatalog(){
 }
 
 (async function init(){
-  initMaxBridgeIfPresent();
+  initPlatformBridge();
   renderBarcode();
   await loadCatalog();
   renderTabs();
