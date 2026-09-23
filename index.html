@@ -270,11 +270,12 @@ function initPlatformBridge() {
   if (dbg) {
     dbg.style.display = 'block';
     dbg.textContent =
-      'debug: window.WebApp=' + (!!window.WebApp) +
+      'debug v2: window.WebApp=' + (!!window.WebApp) +
       ' | window.Telegram=' + (!!window.Telegram) +
       ' | window.Telegram.WebApp=' + (!!(window.Telegram && window.Telegram.WebApp)) +
       ' | platform=' + state.platform +
-      ' | userId=' + (state.platformUser ? state.platformUser.id : 'нет');
+      ' | userId=' + (state.platformUser ? state.platformUser.id : 'нет') +
+      ' | write=' + (state.platformUser ? state.platformUser.allows_write_to_pm : 'нет');
   }
 }
 
@@ -496,6 +497,29 @@ function openProduct(id){
   showSheet();
 }
 
+/* Телефон: при нажатии в поле сразу появляется настоящий «+7»,
+   дальше клиент вводит 978..., номер сам оформляется как +7 978 701-01-93 */
+function formatPhone(value){
+  let d = String(value).replace(/\D/g, '');
+  if (d.startsWith('8')) d = '7' + d.slice(1);
+  if (!d.startsWith('7')) d = '7' + d;
+  d = d.slice(0, 11);
+  let out = '+7';
+  if (d.length > 1) out += ' ' + d.slice(1, 4);
+  if (d.length > 4) out += ' ' + d.slice(4, 7);
+  if (d.length > 7) out += '-' + d.slice(7, 9);
+  if (d.length > 9) out += '-' + d.slice(9, 11);
+  return out;
+}
+function setupPhoneInput(el){
+  if (!el) return;
+  el.addEventListener('focus', () => {
+    if (!el.value) el.value = '+7';
+    setTimeout(() => { try { el.setSelectionRange(el.value.length, el.value.length); } catch (e) {} }, 0);
+  });
+  el.addEventListener('input', () => { el.value = formatPhone(el.value); });
+}
+
 function openOrderForm(p){
   const sheet = document.getElementById('sheet');
   const prefillName = state.platformUser ? [state.platformUser.first_name, state.platformUser.last_name].filter(Boolean).join(' ') : '';
@@ -509,7 +533,7 @@ function openOrderForm(p){
     </div>
     <div class="field">
       <label>Телефон</label>
-      <input type="tel" id="fPhone" placeholder="+7 ___ ___-__-__" />
+      <input type="tel" id="fPhone" inputmode="tel" autocomplete="tel" placeholder="+7 ___ ___-__-__" />
     </div>
     <div class="field">
       <label>Комментарий (необязательно)</label>
@@ -520,18 +544,64 @@ function openOrderForm(p){
   `;
   sheet.querySelector('#backBtn').addEventListener('click', () => openProduct(p.id));
   sheet.querySelector('#submitOrder').addEventListener('click', () => submitOrder(p));
+  setupPhoneInput(sheet.querySelector('#fPhone'));
 }
 
-async function submitOrder(p){
+/* Telegram: бот не может писать клиенту, пока тот не разрешил. Спрашиваем
+   один раз, перед отправкой заявки, со своим понятным пояснением. */
+function needsWriteAccess(){
+  const tg = window.Telegram && window.Telegram.WebApp;
+  return state.platform === 'telegram' && state.platformUser &&
+    state.platformUser.allows_write_to_pm !== true &&
+    tg && typeof tg.requestWriteAccess === 'function' &&
+    typeof tg.isVersionAtLeast === 'function' && tg.isVersionAtLeast('6.9');
+}
+
+function submitOrder(p){
   const name = document.getElementById('fName').value.trim();
-  const phone = document.getElementById('fPhone').value.trim();
+  const phoneDigits = document.getElementById('fPhone').value.replace(/\D/g, '');
   const comment = document.getElementById('fComment').value.trim();
 
-  if (!name || !phone){
-    alert('Заполните имя и телефон');
+  if (!name){
+    alert('Укажите, как к вам обращаться');
     return;
   }
+  if (phoneDigits.length < 11){
+    alert('Введите номер телефона полностью, например +7 978 701-01-93');
+    return;
+  }
+  const phone = '+' + phoneDigits;
 
+  if (needsWriteAccess()){
+    showWriteAccessStep(p, name, phone, comment);
+    return;
+  }
+  sendOrder(p, name, phone, comment);
+}
+
+function showWriteAccessStep(p, name, phone, comment){
+  const sheet = document.getElementById('sheet');
+  sheet.innerHTML = `
+    <div class="confirm">
+      <h3>Разрешить боту Ликс-Лайн писать вам?</h3>
+      <p>Тогда у вас останется история заказов: в чате с ботом будет подтверждение заявки и ответы менеджера.</p>
+      <button class="btn btn-primary" id="allowBtn" style="margin-top:16px;">Разрешить и отправить заявку</button>
+      <button class="btn btn-ghost" id="skipBtn" style="margin-top:8px;">Отправить без чата</button>
+    </div>
+  `;
+  sheet.querySelector('#allowBtn').addEventListener('click', () => {
+    let done = false;
+    const go = () => { if (!done){ done = true; sendOrder(p, name, phone, comment); } };
+    try {
+      window.Telegram.WebApp.requestWriteAccess(go);
+    } catch (e) {
+      go();
+    }
+  });
+  sheet.querySelector('#skipBtn').addEventListener('click', () => sendOrder(p, name, phone, comment));
+}
+
+async function sendOrder(p, name, phone, comment){
   const payload = {
     name, phone, comment,
     items: [{ id: p.id, name: p.name, price: p.price }],
