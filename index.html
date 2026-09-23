@@ -187,6 +187,10 @@
     font-family:var(--mono); font-size:10.5px; color:#8a6a1f; background:#fdf3dd;
     border:1px dashed #e3c581; border-radius:8px; padding:8px 10px; margin:10px 14px 0;
   }
+  #debugBanner{
+    position:fixed; top:0; left:0; right:0; z-index:9999; margin:0;
+    border-radius:0; font-size:10px; word-break:break-all; padding:6px 10px;
+  }
 </style>
 </head>
 <body>
@@ -202,6 +206,8 @@
       <div class="updated" id="updatedAt">—</div>
     </div>
   </header>
+
+  <div class="demo-banner" id="debugBanner" style="display:none;"></div>
 
   <div class="demo-banner" id="demoBanner" style="display:none;">
     demo-режим: показаны примерные данные, каталог с сайта ещё не подключён
@@ -256,6 +262,19 @@ function initPlatformBridge() {
     } catch (e) {
       console.warn('Telegram WebApp: не удалось прочитать initDataUnsafe', e);
     }
+  }
+
+  // ВРЕМЕННО: показываем на экране, что именно определилось — уберём,
+  // как только разберёмся с Telegram
+  const dbg = document.getElementById('debugBanner');
+  if (dbg) {
+    dbg.style.display = 'block';
+    dbg.textContent =
+      'debug: window.WebApp=' + (!!window.WebApp) +
+      ' | window.Telegram=' + (!!window.Telegram) +
+      ' | window.Telegram.WebApp=' + (!!(window.Telegram && window.Telegram.WebApp)) +
+      ' | platform=' + state.platform +
+      ' | userId=' + (state.platformUser ? state.platformUser.id : 'нет');
   }
 }
 
