@@ -207,7 +207,6 @@
     </div>
   </header>
 
-  <div class="demo-banner" id="debugBanner" style="display:none;"></div>
 
   <div class="demo-banner" id="demoBanner" style="display:none;">
     demo-режим: показаны примерные данные, каталог с сайта ещё не подключён
@@ -264,19 +263,6 @@ function initPlatformBridge() {
     }
   }
 
-  // ВРЕМЕННО: показываем на экране, что именно определилось — уберём,
-  // как только разберёмся с Telegram
-  const dbg = document.getElementById('debugBanner');
-  if (dbg) {
-    dbg.style.display = 'block';
-    dbg.textContent =
-      'debug v2: window.WebApp=' + (!!window.WebApp) +
-      ' | window.Telegram=' + (!!window.Telegram) +
-      ' | window.Telegram.WebApp=' + (!!(window.Telegram && window.Telegram.WebApp)) +
-      ' | platform=' + state.platform +
-      ' | userId=' + (state.platformUser ? state.platformUser.id : 'нет') +
-      ' | write=' + (state.platformUser ? state.platformUser.allows_write_to_pm : 'нет');
-  }
 }
 
 /* Демо-данные — реалистичный срез каталога Ликс-Лайн, чтобы приложение
