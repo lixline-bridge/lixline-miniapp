@@ -391,7 +391,7 @@ function renderSubtabs(){
   subtabs.style.display = 'flex';
   const chips = [{ category_id: null, name: 'Весь раздел' }, ...children];
   subtabs.innerHTML = chips.map(c => `
-    <button class="chip ${state.activeSubcategory === c.category_id ? 'active' : ''}" data-cat="${c.category_id}">
+    <button class="chip ${(c.category_id === null ? state.activeSubcategory === null : Number(c.category_id) === state.activeSubcategory) ? 'active' : ''}" data-cat="${c.category_id}">
       ${c.name}
     </button>
   `).join('');
