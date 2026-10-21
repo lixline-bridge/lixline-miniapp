@@ -108,6 +108,7 @@
   .info .sub{font-size:12px; color:var(--muted); margin-top:2px;}
   .stock-badge{display:inline-block; font-size:10.5px; font-weight:600; margin-top:4px; color:var(--ok);}
   .stock-badge.out{color:#b34b4b;}
+  .stock-badge.preorder{color:#b36b00;}
   .price{
     font-family:var(--mono); font-weight:700; font-size:14.5px; color:var(--amber-deep);
     white-space:nowrap; padding-left:6px;
@@ -390,11 +391,13 @@ function renderSubtabs(){
 
   subtabs.style.display = 'flex';
   const chips = [{ category_id: null, name: 'Весь раздел' }, ...children];
-  subtabs.innerHTML = chips.map(c => `
-    <button class="chip ${(c.category_id === null ? state.activeSubcategory === null : Number(c.category_id) === state.activeSubcategory) ? 'active' : ''}" data-cat="${c.category_id}">
-      ${c.name}
-    </button>
-  `).join('');
+  subtabs.innerHTML = chips.map(c => {
+    // c.category_id может прийти из JSON как строка — приводим к числу для сравнения
+    const isActive = c.category_id === null
+      ? state.activeSubcategory === null
+      : Number(c.category_id) === state.activeSubcategory;
+    return `<button class="chip ${isActive ? 'active' : ''}" data-cat="${c.category_id}">${c.name}</button>`;
+  }).join('');
   subtabs.querySelectorAll('.chip').forEach(btn => {
     btn.addEventListener('click', () => {
       const v = btn.dataset.cat;
@@ -431,6 +434,7 @@ function renderList(){
         <div class="name">${p.name}</div>
         <div class="sub">${p.sku}</div>
         <div class="stock-badge ${p.in_stock ? '' : 'out'}">${p.in_stock ? 'В наличии' : 'Нет в наличии'}</div>
+        ${p.upc ? `<div class="stock-badge preorder">📦 ${p.upc}</div>` : ''}
       </div>
       <div class="price">${money(p.price)}</div>
     </div>
@@ -462,7 +466,10 @@ function openProduct(id){
     ${isLong ? `<button class="read-more" id="readMoreBtn">Читать далее</button>` : ''}
     <div class="price-row">
       <span class="big-price">${money(p.price)}</span>
-      <span class="stock-badge ${p.in_stock ? '' : 'out'}">${p.in_stock ? 'В наличии' : 'Нет в наличии'}</span>
+      <span>
+        <span class="stock-badge ${p.in_stock ? '' : 'out'}">${p.in_stock ? 'В наличии' : 'Нет в наличии'}</span>
+        ${p.upc ? `<span class="stock-badge preorder" style="display:block;margin-top:4px;">📦 ${p.upc}</span>` : ''}
+      </span>
     </div>
     <button class="btn btn-primary" id="orderBtn">Оформить заявку</button>
     ${p.url ? `
